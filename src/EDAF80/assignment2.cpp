@@ -43,7 +43,7 @@ void
 edaf80::Assignment2::run()
 {
 	// Load the sphere geometry
-	auto const shape = parametric_shapes::createCircleRing(2.0f, 0.75f, 40u, 4u);
+	auto const shape = parametric_shapes::createSphere(0.15f, 10u, 10u);
 	if (shape.vao == 0u)
 		return;
 
@@ -213,9 +213,36 @@ edaf80::Assignment2::run()
 		bonobo::changePolygonMode(polygon_mode);
 
 
-		if (interpolate) {
-			//! \todo Interpolate the movement of a shape between various
-			//!        control points.
+			if (interpolate) {
+				// Total time to traverse between control points (in seconds)
+				float total_time = 5.0f; // Adjust this time based on how fast you want the object to move
+
+				// Determine how much time has passed (in seconds) since interpolation started
+				float time_in_path = fmod(elapsed_time_s, total_time);
+
+				// Determine which control points we are interpolating between
+				unsigned int current_segment = static_cast<unsigned int>(floor(time_in_path / total_time * (control_point_locations.size() - 1)));
+
+				// Ensure the index does not go out of bounds
+				if (current_segment >= control_point_locations.size() - 1) {
+					current_segment = control_point_locations.size() - 2;
+				}
+
+				// Get the two control points to interpolate between
+				glm::vec3 const& p0 = control_point_locations[current_segment];
+				glm::vec3 const& p1 = control_point_locations[current_segment + 1];
+
+				// Calculate interpolation factor (x) between the two points based on elapsed time
+				float segment_duration = total_time / (control_point_locations.size() - 1); // Time per segment
+				float segment_time = fmod(time_in_path, segment_duration); // Time within the current segment
+				float x = segment_time / segment_duration; // Interpolation parameter
+
+				// Compute the interpolated position using LERP
+				glm::vec3 new_position = interpolation::evalLERP(p0, p1, x);
+
+				// Apply the new position to the node's transform
+				node.get_transform().SetTranslate(new_position);
+			}
 			if (use_linear) {
 				//! \todo Compute the interpolated position
 				//!       using the linear interpolation.
