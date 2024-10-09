@@ -111,7 +111,7 @@ edaf80::Assignment2::run()
 
 	// Set the default tensions value; it can always be changed at runtime
 	// through the "Scene Controls" window.
-	float catmull_rom_tension = 0.0f;
+	float catmull_rom_tension = 0.5f;
 
 	// Set whether the default interpolation algorithm should be the linear one;
 	// it can always be changed at runtime through the "Scene Controls" window.
@@ -214,19 +214,66 @@ edaf80::Assignment2::run()
 
 
 		if (interpolate) {
-			//! \todo Interpolate the movement of a shape between various
-			//!        control points.
 			if (use_linear) {
-				//! \todo Compute the interpolated position
-				//!       using the linear interpolation.
+				// Determine how long it should take to interpolate between control points
+				float total_time = 5.0f;  // Adjust this value based on your desired speed
+
+				// Calculate how far along the entire path you are, using elapsed_time_s
+				float path_time = fmod(elapsed_time_s, total_time);
+
+				// Compute which segment of control points we're currently in
+				unsigned int current_segment = static_cast<unsigned int>(floor((path_time / total_time) * (control_point_locations.size() - 1)));
+
+				// Ensure that the current segment doesn't go out of bounds
+				if (current_segment > control_point_locations.size() - 1) {
+					current_segment = control_point_locations.size() - 2;
+				}
+
+				// Get the control points to interpolate between
+				glm::vec3 const& p0 = control_point_locations[current_segment];
+				glm::vec3 const& p1 = control_point_locations[current_segment + 1];
+
+				// Calculate the interpolation factor (x)
+				float segment_duration = total_time / (control_point_locations.size() - 1);
+				float segment_time = fmod(path_time, segment_duration);
+				float x = segment_time / segment_duration;
+
+				// Perform the LERP interpolation between the two control points
+				glm::vec3 new_position = interpolation::evalLERP(p0, p1, x);
+
+				// Set the position of the object
+				circle_rings.get_transform().SetTranslate(new_position);
+
 			}
 			else {
-				//! \todo Compute the interpolated position
-				//!       using the Catmull-Rom interpolation;
-				//!       use the `catmull_rom_tension`
-				//!       variable as your tension argument.
+				// Catmull-Rom interpolation logic
+
+				float total_time = 5.0f;  // Total time for interpolation
+				float path_time = fmod(elapsed_time_s, total_time);
+
+				unsigned int current_segment = static_cast<unsigned int>(floor(path_time / total_time * (control_point_locations.size() - 1)));
+
+				// Ensure we have enough points to interpolate
+				if (current_segment < 1 || current_segment > control_point_locations.size() - 3) {
+					current_segment = glm::clamp(current_segment, 1u, static_cast<unsigned int>(control_point_locations.size() - 3));
+				}
+
+				// Get the four control points for Catmull-Rom
+				glm::vec3 const& p0 = control_point_locations[current_segment - 1];
+				glm::vec3 const& p1 = control_point_locations[current_segment];
+				glm::vec3 const& p2 = control_point_locations[current_segment + 1];
+				glm::vec3 const& p3 = control_point_locations[current_segment + 2];
+
+				float segment_duration = total_time / (control_point_locations.size() - 1);
+				float segment_time = fmod(path_time, segment_duration);
+				float x = segment_time / segment_duration;
+
+				glm::vec3 new_position = interpolation::evalCatmullRom(p0, p1, p2, p3, catmull_rom_tension, x);
+
+				circle_rings.get_transform().SetTranslate(new_position);
 			}
 		}
+
 
 		circle_rings.render(mCamera.GetWorldToClipMatrix());
 		if (show_control_points) {
