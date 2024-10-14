@@ -48,7 +48,7 @@ edaf80::Assignment2::run()
 		return;
 
 	// Set up the camera
-	mCamera.mWorld.SetTranslate(glm::vec3(0.0f, 1.0f, 9.0f));
+	mCamera.mWorld.SetTranslate(glm::vec3(0.0f, 0.0f, 0.5f));
 	mCamera.mMouseSensitivity = glm::vec2(0.003f);
 	mCamera.mMovementSpeed = glm::vec3(3.0f); // 3 m/s => 10.8 km/h
 
@@ -119,7 +119,7 @@ edaf80::Assignment2::run()
 
 	// Set whether to interpolate the position of an object or not; it can
 	// always be changed at runtime through the "Scene Controls" window.
-	bool interpolate = true;
+	bool interpolate = false;
 
 	// Set whether to show the control points or not; it can always be changed
 	// at runtime through the "Scene Controls" window.
@@ -253,11 +253,6 @@ edaf80::Assignment2::run()
 
 				unsigned int current_segment = static_cast<unsigned int>(floor(path_time / total_time * (control_point_locations.size() - 1)));
 
-				// Ensure we have enough points to interpolate
-				if (current_segment < 1 || current_segment > control_point_locations.size() - 3) {
-					current_segment = glm::clamp(current_segment, 1u, static_cast<unsigned int>(control_point_locations.size() - 3));
-				}
-
 				// Get the four control points for Catmull-Rom
 				glm::vec3 const& p0 = control_point_locations[current_segment - 1];
 				glm::vec3 const& p1 = control_point_locations[current_segment];
@@ -278,7 +273,7 @@ edaf80::Assignment2::run()
 		circle_rings.render(mCamera.GetWorldToClipMatrix());
 		if (show_control_points) {
 			for (auto const& control_point : control_points) {
-				control_point.render(mCamera.GetWorldToClipMatrix());
+				//control_point.render(mCamera.GetWorldToClipMatrix());
 			}
 		}
 

@@ -216,7 +216,7 @@ parametric_shapes::createSphere(float const radius,
 		float const cos_phi = std::cos(phi);
 		float const sin_phi = std::sin(phi);
 
-		for (unsigned int j = 0u; j < lon_slice_vertices_count; ++j) {
+		for (unsigned int j = 0u;  j < lon_slice_vertices_count; ++j) {
 			float const theta = static_cast<float>(j) * d_theta;
 			float const cos_theta = std::cos(theta);
 			float const sin_theta = std::sin(theta);
@@ -229,18 +229,14 @@ parametric_shapes::createSphere(float const radius,
 			// texture coordinates
 
 			//TODO: Check correctness of longitude and latitude
-			texcoords[index] = glm::vec3(static_cast<float>(i) / static_cast<float>(longitude_split_count),
-				static_cast<float>(j) / static_cast<float>(latitude_split_count),
+			texcoords[index] = glm::vec3(static_cast<float>(j) / static_cast<float>(longitude_split_count),
+				static_cast<float>(i) / static_cast<float>(latitude_split_count),
 				0.0f);
 
 
-			// tangent
-			auto const t = glm::vec3(radius * cos_theta * sin_phi,
-				0.0f,
-				-radius * sin_theta * sin_phi);  // Tangent vector in xz-plane
-
-			tangents[index] = glm::normalize(t);
-
+			auto const t = glm::vec3(cos_theta, 0.0f, -sin_theta);
+			tangents[index] = t;
+		
 			// binormal
 			auto const b = glm::vec3(radius * sin_theta * cos_phi,
 				radius * sin_phi,
@@ -250,7 +246,7 @@ parametric_shapes::createSphere(float const radius,
 
 			// normal
 			auto const n = glm::cross(t, b);  // Normal vector is simply the normalized position
-			normals[index] = glm::normalize(n);
+			normals[index] = (n);
 			++index;
 		}
 	}
