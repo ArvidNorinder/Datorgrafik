@@ -421,6 +421,20 @@ bonobo::loadTextureCubeMap(std::string const& posx, std::string const& negx,
 	// GL_TEXTURE_2D is used there, as we want a simple 2D-texture.
 	glBindTexture(GL_TEXTURE_CUBE_MAP, texture);
 
+
+	// Set the wrapping properties of the texture; you can have a look on
+	// http://docs.gl to learn more about them
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+	// Set the minification and magnification properties of the textures;
+	// you can have a look on http://docs.gl to lear more about them, or
+	// attend EDAN35 in the next period ;-)
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, generate_mipmap ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+
 	// We need to fill in the cube map using the images passed in as
 	// argument. The function `getTextureData()` uses stb to read in the
 	// image files and return a `std::vector<std::uint8_t>` containing all the
@@ -454,18 +468,6 @@ bonobo::loadTextureCubeMap(std::string const& posx, std::string const& negx,
 			GL_UNSIGNED_BYTE, // type
 			reinterpret_cast<GLvoid const*>(data.data())); // data
 	}
-
-	// Set the wrapping properties of the texture; you can have a look on
-	// http://docs.gl to learn more about them
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-	// Set the minification and magnification properties of the textures;
-	// you can have a look on http://docs.gl to lear more about them, or
-	// attend EDAN35 in the next period ;-)
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, generate_mipmap ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 
 

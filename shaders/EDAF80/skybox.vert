@@ -1,4 +1,4 @@
-#version 330 core
+#version 410 core
 layout (location = 0) in vec3 aPos; // Vertex position at location 0
 
 out vec3 TexCoords;
@@ -12,7 +12,9 @@ void main()
     mat4 viewWithoutTranslation = mat4(mat3(vertex_world_to_clip));
 
     // Transform the vertex position (world to clip transformation)
-    gl_Position = viewWithoutTranslation * vertex_model_to_world * vec4(aPos, 1.0);
+    //gl_Position = viewWithoutTranslation * vertex_model_to_world * vec4(aPos, 1.0);
+	gl_Position = vertex_world_to_clip * vertex_model_to_world * vec4(aPos, 1.0);
+
 
     // Pass the direction to the fragment shader
     TexCoords = aPos;
