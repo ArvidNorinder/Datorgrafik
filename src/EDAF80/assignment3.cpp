@@ -49,6 +49,7 @@ edaf80::Assignment3::run()
 
 	// Create the shader programs
 	ShaderProgramManager program_manager;
+
 	GLuint fallback_shader = 0u;
 	program_manager.CreateAndRegisterProgram("Fallback",
 	                                         { { ShaderType::vertex, "common/fallback.vert" },
@@ -83,6 +84,25 @@ edaf80::Assignment3::run()
 	if (texcoord_shader == 0u)
 		LogError("Failed to load texcoord shader");
 
+	GLuint skybox_shader = 0u;
+	program_manager.CreateAndRegisterProgram("Skybox",
+											{ { ShaderType::vertex, "EDAF80/skybox.vert" },
+											{ ShaderType::fragment, "EDAF80/skybox.frag" } },
+											skybox_shader);
+	if (skybox_shader == 0u)
+		LogError("Failed to load texcoord shader");
+
+	GLuint cubemap_texture = bonobo::loadTextureCubeMap(
+		"H:/Program/res/cubemaps/NissiBeach2/posx.jpg",
+		"H:/Program/res/cubemaps/NissiBeach2/negx.jpg",
+		"H:/Program/res/cubemaps/NissiBeach2/posy.jpg",
+		"H:/Program/res/cubemaps/NissiBeach2/negy.jpg",
+		"H:/Program/res/cubemaps/NissiBeach2/posz.jpg",
+		"H:/Program/res/cubemaps/NissiBeach2/negz.jpg",
+		true);
+
+
+
 	auto light_position = glm::vec3(-2.0f, 4.0f, 2.0f);
 	auto const set_uniforms = [&light_position](GLuint program){
 		glUniform3fv(glGetUniformLocation(program, "light_position"), 1, glm::value_ptr(light_position));
@@ -108,7 +128,9 @@ edaf80::Assignment3::run()
 
 	Node skybox;
 	skybox.set_geometry(skybox_shape);
-	skybox.set_program(&fallback_shader, set_uniforms);
+	skybox.set_program(&skybox_shader, set_uniforms);
+	skybox.add_texture("skybox", cubemap_texture, GL_TEXTURE_CUBE_MAP);
+
 
 	auto demo_shape = parametric_shapes::createSphere(1.5f, 40u, 40u);
 	if (demo_shape.vao == 0u) {
@@ -199,9 +221,25 @@ edaf80::Assignment3::run()
 		bonobo::changePolygonMode(polygon_mode);
 
 
-		skybox.render(mCamera.GetWorldToClipMatrix());
-		demo_sphere.render(mCamera.GetWorldToClipMatrix());
+		glm::mat4 projection = mCamera.GetViewToClipMatrix();
+		glm::mat4 view = mCamera.GetWorldToViewMatrix();
+		glm::mat4 vertex_world_to_clip = projection * view;
+		glm::mat4 vertex_model_to_world = glm::mat4(1.0f);  // Identity matrix
 
+		// Get the uniform locations
+		glUseProgram(skybox_shader);
+		GLint vertex_world_to_clip_loc = glGetUniformLocation(skybox_shader, "vertex_world_to_clip");
+		GLint vertex_model_to_world_loc = glGetUniformLocation(skybox_shader, "vertex_model_to_world");
+
+		// Set the uniforms
+		glUniformMatrix4fv(vertex_world_to_clip_loc, 1, GL_FALSE, glm::value_ptr(vertex_world_to_clip));
+		glUniformMatrix4fv(vertex_model_to_world_loc, 1, GL_FALSE, glm::value_ptr(vertex_model_to_world));
+
+		//Ensure skybox is behind everthing else
+		glDepthMask(GL_FALSE);
+		skybox.render(mCamera.GetWorldToClipMatrix());
+		//glDepthMask(GL_TRUE);
+		//demo_sphere.render(mCamera.GetWorldToClipMatrix());
 
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
@@ -212,10 +250,11 @@ edaf80::Assignment3::run()
 				changeCullMode(cull_mode);
 			}
 			bonobo::uiSelectPolygonMode("Polygon mode", polygon_mode);
-			auto demo_sphere_selection_result = program_manager.SelectProgram("Demo sphere", demo_sphere_program_index);
+			auto demo_sphere_selection_result = program_manager.SelectProgram("Demo Sphere", demo_sphere_program_index);
 			if (demo_sphere_selection_result.was_selection_changed) {
 				demo_sphere.set_program(demo_sphere_selection_result.program, phong_set_uniforms);
 			}
+
 			ImGui::Separator();
 			ImGui::Checkbox("Use normal mapping", &use_normal_mapping);
 			ImGui::ColorEdit3("Ambient", glm::value_ptr(demo_material.ambient));
@@ -253,7 +292,6 @@ edaf80::Assignment3::run()
 int main()
 {
 	std::setlocale(LC_ALL, "");
-
 	Bonobo framework;
 
 	try {
