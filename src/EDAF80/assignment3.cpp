@@ -101,14 +101,14 @@ edaf80::Assignment3::run()
 		"H:/Program/res/cubemaps/NissiBeach2/negz.jpg",
 		true);
 
-/*	GLuint phong_shader = 0u;
+	GLuint phong_shader = 0u;
 	program_manager.CreateAndRegisterProgram("Phong",
 											{ { ShaderType::vertex, "EDAF80/phong.vert" },
 											{ ShaderType::fragment, "EDAF80/phong.frag" } },
-											skybox_shader);
+											phong_shader);
 	if (phong_shader == 0u)
 		LogError("Failed to load phong shader");
-*/
+		
 
 
 
@@ -230,6 +230,18 @@ edaf80::Assignment3::run()
 
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 		bonobo::changePolygonMode(polygon_mode);
+
+		glUseProgram(skybox_shader);
+
+
+		glm::mat4 view = mCamera.GetWorldToViewMatrix();
+		GLint view_loc = glGetUniformLocation(skybox_shader, "view");
+		glUniformMatrix4fv(view_loc, 1, GL_FALSE, glm::value_ptr(view));
+
+		glm::mat4 projection = mCamera.GetViewToClipMatrix();
+		GLint projection_loc = glGetUniformLocation(skybox_shader, "projection");
+		glUniformMatrix4fv(projection_loc, 1, GL_FALSE, glm::value_ptr(projection));
+
 
 
 		//Ensure skybox is behind everthing else
