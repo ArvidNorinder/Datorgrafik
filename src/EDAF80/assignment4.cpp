@@ -76,18 +76,20 @@ edaf80::Assignment4::run()
 		glUniform3fv(glGetUniformLocation(program, "light_position"), 1, glm::value_ptr(light_position));
 		};
 
-
+	float elapsed_time_s = 0.0f;
 	bool use_normal_mapping = false;
-	auto const phong_set_uniforms = [&use_normal_mapping, &light_position, &camera_position](GLuint program) {
+	auto const phong_set_uniforms = [&use_normal_mapping, &light_position, &camera_position, &elapsed_time_s](GLuint program) {
 		glUniform1i(glGetUniformLocation(program, "use_normal_mapping"), use_normal_mapping ? 1 : 0);
 		glUniform3fv(glGetUniformLocation(program, "light_position"), 1, glm::value_ptr(light_position));
 		glUniform3fv(glGetUniformLocation(program, "camera_position"), 1, glm::value_ptr(camera_position));
+		glUniform1f(glGetUniformLocation(program, "time"), elapsed_time_s);
 		};
+
 		
 
-	float elapsed_time_s = 0.0f;
+	
 
-	auto const quad_shape = parametric_shapes::createQuad(100.0, 100.0, 0, 0);
+	auto const quad_shape = parametric_shapes::createQuad(100.0, 100.0, 1000, 1000);
 	if (quad_shape.vao == 0u) {
 		LogError("Failed to retrieve the mesh for the quad");
 		return;

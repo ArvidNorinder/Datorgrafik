@@ -14,7 +14,7 @@ parametric_shapes::createQuad(float const width, float const height,
 	unsigned int const horizontal_split_count,
 	unsigned int const vertical_split_count)
 {
-	auto const vertices = std::array<glm::vec3, 4>{ //x.z quad
+	/*auto const vertices = std::array<glm::vec3, 4>{ //x.z quad
 			glm::vec3(0.0f, 0.0f, 0.0f),
 			glm::vec3(width, 0.0f, 0.0f),
 			glm::vec3(width, 0.0f, height),
@@ -25,7 +25,7 @@ parametric_shapes::createQuad(float const width, float const height,
 	auto const index_sets = std::array<glm::uvec3, 2>{
 			glm::uvec3(0u, 1u, 2u),
 			glm::uvec3(0u, 2u, 3u)
-	};
+	};*/
 
 
 
@@ -42,7 +42,7 @@ parametric_shapes::createQuad(float const width, float const height,
 	auto const vertical_vertices_count = vertical_split_count + 1u;
 	auto const vertices_nb = horizontal_vertices_count * vertical_vertices_count;
 
-	//auto vertices = std::vector<glm::vec3>(vertices_nb);
+	auto vertices = std::vector<glm::vec3>(vertices_nb);
 
 	auto normals = std::vector<glm::vec3>(vertices_nb);
 	auto texcoords = std::vector<glm::vec3>(vertices_nb);
@@ -58,7 +58,7 @@ parametric_shapes::createQuad(float const width, float const height,
 
 		for (unsigned int j = 0u; j < vertical_vertices_count; j++) {
 
-			//vertices[index] = glm::vec3(static_cast<float>(j) * width_step, 0.0f, static_cast<float>(i) * heigh_step);
+			vertices[index] = glm::vec3(static_cast<float>(j) * width_step, 0.0f, static_cast<float>(i) * heigh_step);
 
 			// texture coordinates
 			texcoords[index] = glm::vec3(static_cast<float>(j) / (static_cast<float>(vertical_split_count)),
@@ -69,12 +69,12 @@ parametric_shapes::createQuad(float const width, float const height,
 		}
 	}
 
-	//auto index_sets = std::vector<glm::uvec3>(2u * horizontal_vertices_count * vertical_vertices_count);
+	auto index_sets = std::vector<glm::uvec3>(2u * horizontal_split_count * vertical_split_count);
 	index = 0u;
 
 	//TODO: Complete creating index sets. Use same loop as sphere. Also needs index to track where in vector we are
-	/*for (unsigned int i = 0u; i < horizontal_vertices_count; i++) {
-		for (unsigned int j = 0u; j < vertical_vertices_count; j++) {
+	for (unsigned int i = 0u; i < horizontal_split_count; i++) {
+		for (unsigned int j = 0u; j < vertical_split_count; j++) {
 			index_sets[index] = glm::uvec3(horizontal_vertices_count * (i + 0u) + (j + 0u),
 				horizontal_vertices_count * (i + 0u) + (j + 1u),
 				horizontal_vertices_count * (i + 1u) + (j + 1u));
@@ -85,60 +85,41 @@ parametric_shapes::createQuad(float const width, float const height,
 				horizontal_vertices_count * (i + 1u) + (j + 0u));
 			++index;
 		}
-	}*/
+	}
 
-	//bonobo::mesh_data data;
-	glGenVertexArrays(1, /*! \todo fill me */ &data.vao);
-	glBindVertexArray(/*! \todo bind the previously generated Vertex Array */data.vao);
+	glGenVertexArrays(1, &data.vao);
+	glBindVertexArray(data.vao);
 
 	auto const vertices_offset = 0u;
 	auto const vertices_size = static_cast<GLsizeiptr>(vertices.size() * sizeof(glm::vec3));
-	auto const normals_offset = vertices_size;
-	auto const normals_size = static_cast<GLsizeiptr>(normals.size() * sizeof(glm::vec3));
-	auto const texcoords_offset = normals_offset + normals_size;
+	auto const texcoords_offset = vertices_size;
 	auto const texcoords_size = static_cast<GLsizeiptr>(texcoords.size() * sizeof(glm::vec3));
-	auto const tangents_offset = texcoords_offset + texcoords_size;
-	auto const tangents_size = static_cast<GLsizeiptr>(tangents.size() * sizeof(glm::vec3));
-	auto const binormals_offset = tangents_offset + tangents_size;
-	auto const binormals_size = static_cast<GLsizeiptr>(binormals.size() * sizeof(glm::vec3));
 	auto const bo_size = static_cast<GLsizeiptr>(vertices_size
-		+ normals_size
 		+ texcoords_size
-		+ tangents_size
-		+ binormals_size
 		);
-
 	glGenBuffers(1, &data.bo);
+	assert(data.bo != 0u);
 	glBindBuffer(GL_ARRAY_BUFFER, data.bo);
 	glBufferData(GL_ARRAY_BUFFER, bo_size, nullptr, GL_STATIC_DRAW);
 
-
-
-	glGenBuffers(1, /*! \todo fill me */ &data.bo);
-	glBindBuffer(GL_ARRAY_BUFFER, /*! \todo bind the previously generated Buffer */ data.bo);
-	glBufferData(GL_ARRAY_BUFFER, /*! \todo how many bytes should the buffer contain? */ bo_size,
-		/* where is the data stored on the CPU? */vertices.data(),
-		/* inform OpenGL that the data is modified once, but used often */GL_STATIC_DRAW);
-
-
+	glBufferSubData(GL_ARRAY_BUFFER, vertices_offset, vertices_size, static_cast<GLvoid const*>(vertices.data()));
 	glEnableVertexAttribArray(static_cast<unsigned int>(bonobo::shader_bindings::vertices));
-	glVertexAttribPointer(static_cast<unsigned int>(bonobo::shader_bindings::vertices),
-		/*! \todo how many components do our vertices have? */3,
-		/* what is the type of each component? */GL_FLOAT,
-		/* should it automatically normalise the values stored */GL_FALSE,
-		/* once all components of a vertex have been read, how far away (in bytes) is the next vertex? */0,
-		/* how far away (in bytes) from the start of the buffer is the first vertex? */reinterpret_cast<GLvoid const*>(0x0));
+	glVertexAttribPointer(static_cast<unsigned int>(bonobo::shader_bindings::vertices), 3, GL_FLOAT, GL_FALSE, 0, reinterpret_cast<GLvoid const*>(0x0));
 
-	glGenBuffers(1, /*! \todo fill me */&data.ibo);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, /*! \todo bind the previously generated Buffer */data.ibo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, /*! \todo how many bytes should the buffer contain? */ static_cast<GLsizeiptr>(index_sets.size() * sizeof(glm::uvec3)),
-		/* where is the data stored on the CPU? */index_sets.data(),
-		/* inform OpenGL that the data is modified once, but used often */GL_STATIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, texcoords_offset, texcoords_size, static_cast<GLvoid const*>(texcoords.data()));
+	glEnableVertexAttribArray(static_cast<unsigned int>(bonobo::shader_bindings::texcoords));
+	glVertexAttribPointer(static_cast<unsigned int>(bonobo::shader_bindings::texcoords), 3, GL_FLOAT, GL_FALSE, 0, reinterpret_cast<GLvoid const*>(texcoords_offset));
 
-	data.indices_nb = /*! \todo how many indices do we have? */ static_cast<GLsizei>(index_sets.size() * 3u);
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0u);
+
+	data.indices_nb = static_cast<GLsizei>(index_sets.size() * 3u);
+	glGenBuffers(1, &data.ibo);
+	assert(data.ibo != 0u);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, data.ibo);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(index_sets.size() * sizeof(glm::uvec3)), reinterpret_cast<GLvoid const*>(index_sets.data()), GL_STATIC_DRAW);
 
 	glBindVertexArray(0u);
-	glBindBuffer(GL_ARRAY_BUFFER, 0u);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0u);
 
 	return data;
