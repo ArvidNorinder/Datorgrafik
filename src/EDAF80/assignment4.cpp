@@ -39,6 +39,16 @@ edaf80::Assignment4::~Assignment4()
 void
 edaf80::Assignment4::run()
 {
+
+	GLuint cubemap_texture = bonobo::loadTextureCubeMap(
+		config::resources_path("cubemaps/NissiBeach2/posx.jpg"),
+		config::resources_path("cubemaps/NissiBeach2/negx.jpg"),
+		config::resources_path("cubemaps/NissiBeach2/posy.jpg"),
+		config::resources_path("cubemaps/NissiBeach2/negy.jpg"),
+		config::resources_path("cubemaps/NissiBeach2/posz.jpg"),
+		config::resources_path("cubemaps/NissiBeach2/negz.jpg"),
+		true);
+
 	// Set up the camera
 	mCamera.mWorld.SetTranslate(glm::vec3(-40.0f, 14.0f, 6.0f));
 	mCamera.mWorld.LookAt(glm::vec3(0.0f));
@@ -58,7 +68,18 @@ edaf80::Assignment4::run()
 		return;
 	}
 
-	/*GLuint water_shader = 0u;
+	GLuint skybox_shader = 0u;
+	program_manager.CreateAndRegisterProgram("Skybox",
+		{ { ShaderType::vertex, "EDAF80/skybox.vert" },
+		  { ShaderType::fragment, "EDAF80/skybox.frag" } },
+		skybox_shader);
+
+	if (skybox_shader == 0u) {
+		LogError("Failed to load skybox shader");
+		return;
+	}
+
+	GLuint water_shader = 0u;
 	program_manager.CreateAndRegisterProgram("Water",
 		{ { ShaderType::vertex, "EDAF80/water.vert" },
 		  { ShaderType::fragment, "EDAF80/water.frag" } },
@@ -69,20 +90,20 @@ edaf80::Assignment4::run()
 		return;
 	}
 
-	*/
-
 	auto light_position = glm::vec3(-2.0f, 4.0f, 2.0f);
-	auto const set_uniforms = [&light_position](GLuint program) {
-		glUniform3fv(glGetUniformLocation(program, "light_position"), 1, glm::value_ptr(light_position));
-		};
 
 	float elapsed_time_s = 0.0f;
+	auto colordeep = glm::vec4(0.0f, 0.0f, 0.1f, 1.0f);
+	auto colorshallow = glm::vec4(0.0f, 0.5f, 0.5f, 1.0f);
 	bool use_normal_mapping = false;
-	auto const phong_set_uniforms = [&use_normal_mapping, &light_position, &camera_position, &elapsed_time_s](GLuint program) {
+	auto const phong_set_uniforms = [&use_normal_mapping, &light_position, &camera_position, &elapsed_time_s, &colordeep, &colorshallow](GLuint program) {
 		glUniform1i(glGetUniformLocation(program, "use_normal_mapping"), use_normal_mapping ? 1 : 0);
 		glUniform3fv(glGetUniformLocation(program, "light_position"), 1, glm::value_ptr(light_position));
 		glUniform3fv(glGetUniformLocation(program, "camera_position"), 1, glm::value_ptr(camera_position));
+
 		glUniform1f(glGetUniformLocation(program, "time"), elapsed_time_s);
+		glUniform4fv(glGetUniformLocation(program, "colordeep"), 1, glm::value_ptr(colordeep));
+		glUniform4fv(glGetUniformLocation(program, "colorshallow"), 1, glm::value_ptr(colorshallow));
 		};
 
 		
@@ -102,8 +123,17 @@ edaf80::Assignment4::run()
 
 	Node quad;
 	quad.set_geometry(quad_shape);
-	quad.set_program(&fallback_shader, phong_set_uniforms);
-	//quad.set_program(&water_shader, phong_set_uniforms);
+	//quad.set_program(&fallback_shader, phong_set_uniforms);
+	quad.set_program(&water_shader, phong_set_uniforms);
+	quad.add_texture("nissan_beach", cubemap_texture, GL_TEXTURE_CUBE_MAP);
+
+	auto skybox_shape = parametric_shapes::createSphere(20.0f, 100u, 100u);
+
+	Node skybox;
+	skybox.set_geometry(skybox_shape);
+	skybox.set_program(&skybox_shader, phong_set_uniforms);
+	skybox.add_texture("nissan_beach", cubemap_texture, GL_TEXTURE_CUBE_MAP);
+
 
 
 	glClearDepthf(1.0f);
@@ -129,6 +159,7 @@ edaf80::Assignment4::run()
 	while (!glfwWindowShouldClose(window)) {
 		auto const nowTime = std::chrono::high_resolution_clock::now();
 		auto const deltaTimeUs = std::chrono::duration_cast<std::chrono::microseconds>(nowTime - lastTime);
+		elapsed_time_s += deltaTimeUs.count() / 1000000.0f;  // Convert microseconds to seconds
 		lastTime = nowTime;
 		if (!pause_animation) {
 			elapsed_time_s += std::chrono::duration<float>(deltaTimeUs).count();
@@ -187,6 +218,22 @@ edaf80::Assignment4::run()
 			//
 			// Todo: Render all your geometry here.
 			//
+			glUseProgram(skybox_shader);
+
+
+			glm::mat4 view = mCamera.GetWorldToViewMatrix();
+			GLint view_loc = glGetUniformLocation(skybox_shader, "view");
+			glUniformMatrix4fv(view_loc, 1, GL_FALSE, glm::value_ptr(view));
+
+			glm::mat4 projection = mCamera.GetViewToClipMatrix();
+			GLint projection_loc = glGetUniformLocation(skybox_shader, "projection");
+			glUniformMatrix4fv(projection_loc, 1, GL_FALSE, glm::value_ptr(projection));
+
+			//Ensure skybox is behind everthing else
+			glDepthMask(GL_FALSE);
+			skybox.render(mCamera.GetWorldToClipMatrix());
+			glDepthMask(GL_TRUE);
+			
 			quad.render(mCamera.GetWorldToClipMatrix());
 		}
 
