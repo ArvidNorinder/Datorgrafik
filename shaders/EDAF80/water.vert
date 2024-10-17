@@ -1,3 +1,5 @@
+#version 410
+
 layout (location = 0) in vec3 vertex;
 layout (location = 1) in vec3 tex_coords;
 uniform mat4 vertex_model_to_world;

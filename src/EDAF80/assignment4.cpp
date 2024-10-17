@@ -49,6 +49,8 @@ edaf80::Assignment4::run()
 		config::resources_path("cubemaps/NissiBeach2/negz.jpg"),
 		true);
 
+	GLuint water_normal_map = bonobo::loadTexture2D(config::resources_path("textures/waves.png"));
+
 	// Set up the camera
 	mCamera.mWorld.SetTranslate(glm::vec3(-40.0f, 14.0f, 6.0f));
 	mCamera.mWorld.LookAt(glm::vec3(0.0f));
@@ -126,6 +128,7 @@ edaf80::Assignment4::run()
 	//quad.set_program(&fallback_shader, phong_set_uniforms);
 	quad.set_program(&water_shader, phong_set_uniforms);
 	quad.add_texture("nissan_beach", cubemap_texture, GL_TEXTURE_CUBE_MAP);
+	quad.add_texture("water_normal_map", water_normal_map, GL_TEXTURE_2D);
 
 	auto skybox_shape = parametric_shapes::createSphere(20.0f, 100u, 100u);
 
