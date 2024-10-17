@@ -58,16 +58,51 @@ edaf80::Assignment4::run()
 		return;
 	}
 
-	//
-	// Todo: Insert the creation of other shader programs.
-	//       (Check how it was done in assignment 3.)
-	//
+	/*GLuint water_shader = 0u;
+	program_manager.CreateAndRegisterProgram("Water",
+		{ { ShaderType::vertex, "EDAF80/water.vert" },
+		  { ShaderType::fragment, "EDAF80/water.frag" } },
+		water_shader);
+
+	if (water_shader == 0u) {
+		LogError("Failed to load water shader");
+		return;
+	}
+
+	*/
+
+	auto light_position = glm::vec3(-2.0f, 4.0f, 2.0f);
+	auto const set_uniforms = [&light_position](GLuint program) {
+		glUniform3fv(glGetUniformLocation(program, "light_position"), 1, glm::value_ptr(light_position));
+		};
+
+
+	bool use_normal_mapping = false;
+	auto const phong_set_uniforms = [&use_normal_mapping, &light_position, &camera_position](GLuint program) {
+		glUniform1i(glGetUniformLocation(program, "use_normal_mapping"), use_normal_mapping ? 1 : 0);
+		glUniform3fv(glGetUniformLocation(program, "light_position"), 1, glm::value_ptr(light_position));
+		glUniform3fv(glGetUniformLocation(program, "camera_position"), 1, glm::value_ptr(camera_position));
+		};
+		
 
 	float elapsed_time_s = 0.0f;
 
+	auto const quad_shape = parametric_shapes::createQuad(100.0, 100.0, 0, 0);
+	if (quad_shape.vao == 0u) {
+		LogError("Failed to retrieve the mesh for the quad");
+		return;
+	}
+
+	
 	//
 	// Todo: Load your geometry
 	//
+
+	Node quad;
+	quad.set_geometry(quad_shape);
+	quad.set_program(&fallback_shader, phong_set_uniforms);
+	//quad.set_program(&water_shader, phong_set_uniforms);
+
 
 	glClearDepthf(1.0f);
 	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
@@ -150,6 +185,7 @@ edaf80::Assignment4::run()
 			//
 			// Todo: Render all your geometry here.
 			//
+			quad.render(mCamera.GetWorldToClipMatrix());
 		}
 
 
