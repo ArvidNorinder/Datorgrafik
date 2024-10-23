@@ -22,7 +22,8 @@ Box::Box(float elapsed_time, FPSCameraf& mCamera, GLuint& box_shader, std::funct
 	_mCamera(mCamera),
 	_box_shader(box_shader),
 	_set_uniforms(set_uniforms),
-	_hit_points(3 + rand() % 4)
+	_hit_points(3 + rand() % 4),
+	_max_hit_points(_hit_points)
 {
 	// Set up geometry
 	float box_radius = radius;
@@ -31,6 +32,10 @@ Box::Box(float elapsed_time, FPSCameraf& mCamera, GLuint& box_shader, std::funct
 
 	// Set up shaders
 	setup_shaders();
+
+	loadTexture("C:/Users/Arvid/OneDrive/Skrivbord/School/Datorgrafik/stone_texture.jpg");
+
+	loadDamagedTexture("C:/Users/Arvid/OneDrive/Skrivbord/School/Datorgrafik/cracked_stone.jpg");
 
 	int section = rand() % max_boxes_in_width;  // Get a random section from 0 to max_boxes_in_width - 1, so max_boxes_in_width number of sections
 	float field_width = max_boxes_in_width * box_width;
@@ -110,10 +115,45 @@ void Box::destroy() {
 	_destroyed = true;
 }
 
-void Box::takeHit() {
+void Box::takeHit()
+{
 	_hit_points--;  // Decrease hit points
+
+	// Check if HP is less than or equal to half of the max HP and switch to damaged texture
+	if (_hit_points <= (_max_hit_points / 2) && _damaged_texture != 0) {
+		_node.add_texture("diffuse_texture", _damaged_texture, GL_TEXTURE_2D);  // Switch to damaged texture
+	}
+
+	// Destroy the box if hit points drop to 0 or less
 	if (_hit_points <= 0) {
-		destroy();  // Destroy the box if hit points are 0 or less
+		destroy();
 	}
 }
+
+void Box::loadTexture(std::string const& texture_path)
+{
+	_box_texture = bonobo::loadTexture2D(texture_path);  // Load the normal texture
+
+	if (_box_texture == 0) {
+		std::cerr << "Failed to load texture: " << texture_path << std::endl;
+	}
+	else {
+		std::cout << "Successfully loaded normal texture: " << texture_path << std::endl;
+	}
+
+	_node.add_texture("diffuse_texture", _box_texture, GL_TEXTURE_2D);
+}
+
+void Box::loadDamagedTexture(std::string const& texture_path)
+{
+	_damaged_texture = bonobo::loadTexture2D(texture_path);  // Load the damaged texture
+
+	if (_damaged_texture == 0) {
+		std::cerr << "Failed to load damaged texture: " << texture_path << std::endl;
+	}
+	else {
+		std::cout << "Successfully loaded damaged texture: " << texture_path << std::endl;
+	}
+}
+
 

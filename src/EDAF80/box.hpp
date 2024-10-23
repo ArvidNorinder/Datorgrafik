@@ -28,6 +28,10 @@ public:
 
 	void takeHit();
 
+	void loadTexture(std::string const& texture_path);
+
+	void loadDamagedTexture(std::string const& texture_path);
+
 private:
 	void setup_geometry(float box_width);
 	void setup_shaders();
@@ -41,5 +45,8 @@ private:
 	FPSCameraf _mCamera; //The camera
 	GLuint _box_shader;
 	std::function<void(GLuint)> _set_uniforms;
-	int _hit_points;  // Number of hits the box can take
+	int _hit_points;  // current hit points
+	int _max_hit_points;
+	GLuint _box_texture;  // Texture ID
+	GLuint _damaged_texture; //texture when box is half hp
 };

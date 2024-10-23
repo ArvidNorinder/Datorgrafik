@@ -202,8 +202,13 @@ edaf80::Assignment4::run()
 	std::vector<std::unique_ptr<Bullet>> active_bullets;
 	float bullet_sphere_radius = 1.0f;
 	float last_bullet_time = 0.0f;
-	float fire_rate = 1.0f / 3.0f;  // Fire 3 bullets every 1 second
+	float fire_rate = 1.0f / 5.0f;  // Fire 3 bullets every 1 second
 
+	//Player variables
+	int playerHealth = 100;
+	int score = 0;
+	int high_score = 0;
+	bool gameOver = false;
 
 
 	//TODO: Comment out
@@ -216,186 +221,145 @@ edaf80::Assignment4::run()
 		auto const deltaTimeUs = std::chrono::duration_cast<std::chrono::microseconds>(nowTime - lastTime);
 		elapsed_time_s += deltaTimeUs.count() / 1000000.0f;  // Convert microseconds to seconds
 		lastTime = nowTime;
-		if (!pause_animation) {
-			elapsed_time_s += std::chrono::duration<float>(deltaTimeUs).count();
-		}
 
-		auto& io = ImGui::GetIO();
-		inputHandler.SetUICapture(io.WantCaptureMouse, io.WantCaptureKeyboard);
-
+		// Poll and handle input events (keyboard, mouse, etc.)
 		glfwPollEvents();
 		inputHandler.Advance();
 
+		// If the game is over, do not allow further updates
+		if (!gameOver) {
+			// Check if we need to pause the animation
+			if (!pause_animation) {
+				elapsed_time_s += std::chrono::duration<float>(deltaTimeUs).count();
+			}
 
-		//mCamera.Update(deltaTimeUs, inputHandler);
+			// Check for key inputs to move the player
+			if (inputHandler.GetKeycodeState(GLFW_KEY_A) & GLFW_PRESS) {
+				player_position.x += box_sphere_radius * 8.0f * deltaTimeUs.count() / 1000000.0f;  // Move left
+			}
+			if (inputHandler.GetKeycodeState(GLFW_KEY_D) & GLFW_PRESS) {
+				player_position.x -= box_sphere_radius * 8.0f * deltaTimeUs.count() / 1000000.0f;  // Move right
+			}
 
+			// Update the player's position
+			player_position.x = glm::clamp(player_position.x, left_bound, right_bound);  // Keep player within bounds
+			player.get_transform().SetTranslate(player_position);
 
-		if (use_orbit_camera) {
-			mCamera.mWorld.LookAt(glm::vec3(0.0f));
-		}
-		camera_position = mCamera.mWorld.GetTranslation();
-
-		if (inputHandler.GetKeycodeState(GLFW_KEY_R) & JUST_PRESSED) {
-			shader_reload_failed = !program_manager.ReloadAllPrograms();
-			if (shader_reload_failed)
-				tinyfd_notifyPopup("Shader Program Reload Error",
-				                   "An error occurred while reloading shader programs; see the logs for details.\n"
-				                   "Rendering is suspended until the issue is solved. Once fixed, just reload the shaders again.",
-				                   "error");
-		}
-		if (inputHandler.GetKeycodeState(GLFW_KEY_F3) & JUST_RELEASED)
-			show_logs = !show_logs;
-		if (inputHandler.GetKeycodeState(GLFW_KEY_F2) & JUST_RELEASED)
-			show_gui = !show_gui;
-		if (inputHandler.GetKeycodeState(GLFW_KEY_F11) & JUST_RELEASED)
-			mWindowManager.ToggleFullscreenStatusForWindow(window);
-
-
-		// Retrieve the actual framebuffer size: for HiDPI monitors,
-		// you might end up with a framebuffer larger than what you
-		// actually asked for. For example, if you ask for a 1920x1080
-		// framebuffer, you might get a 3840x2160 one instead.
-		// Also it might change as the user drags the window between
-		// monitors with different DPIs, or if the fullscreen status is
-		// being toggled.
-		int framebuffer_width, framebuffer_height;
-		glfwGetFramebufferSize(window, &framebuffer_width, &framebuffer_height);
-		glViewport(0, 0, framebuffer_width, framebuffer_height);
-
-		//
-		// Todo: If you need to handle inputs, you can do it here
-		//
-
-
-		if (inputHandler.GetKeycodeState(GLFW_KEY_A) & GLFW_PRESS) {
-			player_position.x += box_sphere_radius * 8.0f * deltaTimeUs.count() / 1000000.0f;  // Move left 
-		}
-		if (inputHandler.GetKeycodeState(GLFW_KEY_D) & GLFW_PRESS) {
-			player_position.x -= box_sphere_radius * 8.0f * deltaTimeUs.count() / 1000000.0f;  // Move right
-		}
-
-		/*if (inputHandler.GetKeycodeState(GLFW_KEY_SPACE) & JUST_PRESSED) {
-			glm::vec3 bullet_position = player_position;
-			glm::vec3 bullet_direction = glm::vec3(0.0f, 0.0f, 1.0f);  // Modify this as necessary
-			active_bullets.emplace_back(std::make_unique<Bullet>(elapsed_time_s, mCamera, bullet_shader, set_uniforms, bullet_position, bullet_direction));
-		}*/
-
-
-		// Constrain player to the screen (optional)
-		player_position.x = glm::clamp(player_position.x, left_bound, right_bound);  // Example: restrict player's X movement between -30 and 30
-
-		// Update the player node's position based on input
-		player.get_transform().SetTranslate(player_position);
-
-		mWindowManager.NewImGuiFrame();
-
-		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-		bonobo::changePolygonMode(polygon_mode);
-
-
-		if (!shader_reload_failed) {
-			//
-			// Todo: Render all your geometry here.
-			//
+			// Update the bullets and fire rate
 			if (elapsed_time_s - last_bullet_time >= fire_rate) {
 				glm::vec3 bullet_position = player_position;
 				glm::vec3 bullet_direction = glm::vec3(0.0f, 0.0f, 1.0f);
 				active_bullets.emplace_back(std::make_unique<Bullet>(elapsed_time_s, mCamera, bullet_shader, set_uniforms, bullet_position, bullet_direction));
-
 				last_bullet_time = elapsed_time_s;  // Reset the timer after shooting a bullet
 			}
 
-			
+			// Render all geometry
+			glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+			bonobo::changePolygonMode(polygon_mode);
 
-			//TODO: Here, code logic for shape behaviour in each frame
-			if (active_boxes.size() < 10 && (rand() / static_cast<float>(RAND_MAX)) < 0.02) {
-				active_boxes.emplace_back(std::make_unique<Box>(elapsed_time_s, mCamera, box_shader, set_uniforms, max_boxes_in_width, box_sphere_radius));
-			}
+			if (!shader_reload_failed) {
+				// Update and render boxes first
+				if (active_boxes.size() < 10 && (rand() / static_cast<float>(RAND_MAX)) < 0.02) {
+					active_boxes.emplace_back(std::make_unique<Box>(elapsed_time_s, mCamera, box_shader, set_uniforms, max_boxes_in_width, box_sphere_radius));
+				}
 
-
-
-			// Update and render boxes
-			for (auto& box_ptr : active_boxes) {
-				box_ptr->update(elapsed_time_s, 1.0f);  // Example speed value
-				box_ptr->render(mCamera.GetWorldToClipMatrix());
-			}
-
-			// Remove destroyed boxes
-			active_boxes.erase(std::remove_if(active_boxes.begin(), active_boxes.end(),
-				[](const std::unique_ptr<Box>& box_ptr) {
-					return box_ptr->isDestroyed() || box_ptr->hasPassedPlayer();
-				}), active_boxes.end());
-
-
-
-			float bullet_speed = 100.0f;  // Adjust as needed
-
-			// Update and render bullets
-			for (auto& bullet_ptr : active_bullets) {
-				bullet_ptr->update(elapsed_time_s, bullet_speed);
-				bullet_ptr->render(mCamera.GetWorldToClipMatrix());
-			}
-
-
-			// Collision detection between bullets and boxes
-			for (auto& bullet_ptr : active_bullets) {
 				for (auto& box_ptr : active_boxes) {
-					float distance = glm::distance(bullet_ptr->getPosition(), box_ptr->getPosition());
-					float collision_distance = bullet_sphere_radius + box_sphere_radius;
-					if (distance <= collision_distance) {
-						bullet_ptr->destroy();  // Mark bullet as destroyed
-						box_ptr->takeHit();  // Decrease hit points for the box
-						// Add explosion effects or score increment here if necessary
+					box_ptr->update(elapsed_time_s, 1.0f);  // Example speed value
+					box_ptr->render(mCamera.GetWorldToClipMatrix());
+
+					// Check if the box has passed the player, and reduce health if true
+					if (box_ptr->hasPassedPlayer()) {
+						playerHealth -= 10;  // Reduce player's health when a box passes
+						if (playerHealth <= 0) {
+							playerHealth = 0;  // Ensure health doesn't go below 0
+							gameOver = true;   // Set the game over flag
+						}
 					}
 				}
+
+				// Perform collision detection after rendering boxes
+				for (auto& bullet_ptr : active_bullets) {
+					for (auto& box_ptr : active_boxes) {
+						float distance = glm::distance(bullet_ptr->getPosition(), box_ptr->getPosition());
+						float collision_distance = bullet_sphere_radius + box_sphere_radius;
+						if (distance <= collision_distance) {
+							bullet_ptr->destroy();  // Mark bullet as destroyed
+							box_ptr->takeHit();  // Decrease hit points for the box
+
+							// Increment score if the box is destroyed
+							if (box_ptr->isDestroyed()) {
+								score += 10;  // Increment score by 10 for each destroyed box
+							}
+						}
+					}
+				}
+
+				// Remove destroyed boxes after all updates and collisions are done
+				active_boxes.erase(std::remove_if(active_boxes.begin(), active_boxes.end(),
+					[](const std::unique_ptr<Box>& box_ptr) {
+						return box_ptr->isDestroyed() || box_ptr->hasPassedPlayer();
+					}), active_boxes.end());
+
+				// Update and render bullets
+				float bullet_speed = 100.0f;  // Adjust as needed
+				for (auto& bullet_ptr : active_bullets) {
+					bullet_ptr->update(elapsed_time_s, bullet_speed);
+					bullet_ptr->render(mCamera.GetWorldToClipMatrix());
+				}
+
+				// Remove destroyed bullets after updates
+				active_bullets.erase(std::remove_if(active_bullets.begin(), active_bullets.end(),
+					[](const std::unique_ptr<Bullet>& bullet_ptr) {
+						return bullet_ptr->isDestroyed();
+					}), active_bullets.end());
+
+				// Render the player
+				player.render(mCamera.GetWorldToClipMatrix());
 			}
-
-
-
-			// Remove destroyed bullets
-			active_bullets.erase(std::remove_if(active_bullets.begin(), active_bullets.end(),
-				[](const std::unique_ptr<Bullet>& bullet_ptr) {
-					return bullet_ptr->isDestroyed();
-				}), active_bullets.end());
-
-
-
-			player.render(mCamera.GetWorldToClipMatrix());
 		}
 
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		// Start the ImGui frame (only once)
+		mWindowManager.NewImGuiFrame();
 
-		//
-		// Todo: If you want a custom ImGUI window, you can set it up
-		//       here
-		//
-
-
-		bool opened = ImGui::Begin("Scene Control", nullptr, ImGuiWindowFlags_None);
-		if (opened) {
-			ImGui::Checkbox("Pause animation", &pause_animation);
-			ImGui::Checkbox("Use orbit camera", &use_orbit_camera);
-			ImGui::Separator();
-			auto const cull_mode_changed = bonobo::uiSelectCullMode("Cull mode", cull_mode);
-			if (cull_mode_changed) {
-				changeCullMode(cull_mode);
-			}
-			bonobo::uiSelectPolygonMode("Polygon mode", polygon_mode);
-			ImGui::Separator();
-			ImGui::Checkbox("Show basis", &show_basis);
-			ImGui::SliderFloat("Basis thickness scale", &basis_thickness_scale, 0.0f, 100.0f);
-			ImGui::SliderFloat("Basis length scale", &basis_length_scale, 0.0f, 100.0f);
-		}
+		// Render Player Health ImGui window
+		ImGui::Begin("Player Health");
+		float healthPercentage = static_cast<float>(playerHealth) / 100.0f;  // Assuming max health is 100
+		ImGui::Text("Health:");
+		ImGui::ProgressBar(healthPercentage, ImVec2(200, 20));
+		ImGui::Text("Health: %d / 100", playerHealth);
 		ImGui::End();
 
-		if (show_basis)
-			bonobo::renderBasis(basis_thickness_scale, basis_length_scale, mCamera.GetWorldToClipMatrix());
-		if (show_logs)
-			Log::View::Render();
+		ImGui::Begin("Score");
+		ImGui::Text("Score: %d", score);  // Display the score
+		ImGui::Text("High Score: %d", high_score);
+		ImGui::End();
+
+		if (gameOver) {
+			ImGui::Begin("Game Over");
+			ImGui::Text("Game Over!");
+			// Optionally, add a reset button
+			if (ImGui::Button("Reset Game")) {
+				playerHealth = 100;  // Reset player health
+				gameOver = false;    // Restart the game
+				active_boxes.clear(); // Clear existing boxes
+				active_bullets.clear(); // Clear bullets
+
+				if (score > high_score) {
+					high_score = score;
+				}
+
+				score = 0;
+			}
+			ImGui::End();
+		}
+
+		// End the ImGui frame and render it
 		mWindowManager.RenderImGuiFrame(show_gui);
 
+		// Swap buffers for the next frame
 		glfwSwapBuffers(window);
 	}
+
 }
 
 int main()

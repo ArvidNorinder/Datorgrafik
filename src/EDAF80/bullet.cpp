@@ -19,11 +19,13 @@ Bullet::Bullet(float elapsed_time,
 	_direction(glm::normalize(direction))
 {
 	// Set up geometry
-	float bullet_radius = 1.0f;  // Adjust as needed
+	float bullet_radius = 2.0f;  // Adjust as needed
 	setup_geometry(bullet_radius);
 
 	// Set up shaders
 	setup_shaders();
+
+	loadTexture("C:/Users/Arvid/OneDrive/Skrivbord/School/Datorgrafik/bullet_texture.jpg");
 
 	// Set the initial position of the bullet
 	_node.get_transform().SetTranslate(_position);
@@ -67,4 +69,17 @@ glm::vec3 Bullet::getPosition() const {
 
 void Bullet::destroy() {
 	_destroyed = true;
+}
+
+void Bullet::loadTexture(std::string const& texture_path) {
+	_bullet_texture = bonobo::loadTexture2D(texture_path);  // Load the cannonball texture
+
+	if (_bullet_texture == 0) {
+		std::cerr << "Failed to load bullet texture: " << texture_path << std::endl;
+	}
+	else {
+		std::cout << "Successfully loaded bullet texture: " << texture_path << std::endl;
+	}
+
+	_node.add_texture("diffuse_texture", _bullet_texture, GL_TEXTURE_2D);  // Add the texture to the node
 }

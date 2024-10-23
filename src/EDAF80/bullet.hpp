@@ -27,6 +27,8 @@ private:
 	void setup_geometry(float bullet_radius);
 	void setup_shaders();
 
+	void loadTexture(std::string const& texture_path);
+
 	bool _destroyed;
 	float _initial_time;
 	FPSCameraf& _mCamera;
@@ -35,4 +37,6 @@ private:
 	std::function<void(GLuint)> const& _set_uniforms;
 	glm::vec3 _position;
 	glm::vec3 _direction;
+
+	GLuint _bullet_texture;
 };
