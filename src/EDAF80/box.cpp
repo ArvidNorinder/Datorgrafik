@@ -1,4 +1,3 @@
-#include "assignment4.hpp"
 #include "parametric_shapes.hpp"
 
 #include "core/Bonobo.h"
@@ -16,38 +15,46 @@
 #include "box.hpp"
 
 // Constructor initializes the box and sets up geometry and shaders
-Box::Box(float elapsed_time, FPSCameraf& mCamera, GLuint& box_shader, std::function<void(GLuint)> const& set_uniforms)
+Box::Box(float elapsed_time, FPSCameraf& mCamera, GLuint& box_shader, std::function<void(GLuint)> const& set_uniforms, int max_boxes_in_width, float radius)
 	: _destroyed(false),
 	_passed_player(false),
 	_initial_time(elapsed_time),
 	_mCamera(mCamera),
 	_box_shader(box_shader),
-	_set_uniforms(set_uniforms)
+	_set_uniforms(set_uniforms),
+	_hit_points(3 + rand() % 4)
 {
-	//auto camera_position = mCamera.mWorld.GetTranslation();
-	// Set up geometry (e.g., a sphere or a cube)
-	setup_geometry();
+	// Set up geometry
+	float box_radius = radius;
+	float box_width = 2.0f * box_radius;
+	setup_geometry(box_radius);
 
 	// Set up shaders
 	setup_shaders();
 
-	// Random horizontal position between -20 and 20
-	float object_horizontal_position = ((rand() / (float)RAND_MAX) * 40.0f) - 20.0f;
+	int section = rand() % max_boxes_in_width;  // Get a random section from 0 to max_boxes_in_width - 1, so max_boxes_in_width number of sections
+	float field_width = max_boxes_in_width * box_width;
+
+	// Calculate the horizontal position: each section is box_width wide
+	float object_horizontal_position = (section - (max_boxes_in_width / 2.0f)) * box_width + (box_width / 2.0f);
+
+	std::cout << object_horizontal_position << std::endl;
 
 	// Distance from the player
-	float object_distance = 100.0f;
+	float object_distance = 300.0f;
 
-	// Initialize the box position with the random values
+	// Initialize the box position with the calculated horizontal position
 	_position = glm::vec3(object_horizontal_position, 0.0f, object_distance);
 
 	// Set the initial position of the box in the node's transform
 	_node.get_transform().SetTranslate(_position);
 }
 
+
 // Sets up the geometry for the box
-void Box::setup_geometry() {
+void Box::setup_geometry(float box_width) {
 	// Create sphere geometry for the box
-	auto const box_geo = parametric_shapes::createSphere(10.0f, 50u, 50u);
+	auto const box_geo = parametric_shapes::createSphere(box_width, 50u, 50u);
 	if (box_geo.vao == 0u) {
 		throw std::runtime_error("Failed to create box geometry!");
 	}
@@ -102,3 +109,11 @@ glm::vec3 Box::getPosition() const {
 void Box::destroy() {
 	_destroyed = true;
 }
+
+void Box::takeHit() {
+	_hit_points--;  // Decrease hit points
+	if (_hit_points <= 0) {
+		destroy();  // Destroy the box if hit points are 0 or less
+	}
+}
+

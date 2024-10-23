@@ -17,6 +17,7 @@
 
 #include <vector>  // For std::vector'
 #include "box.hpp"
+#include "bullet.hpp"
 
 edaf80::Assignment4::Assignment4(WindowManager& windowManager) :
 	mCamera(0.5f * glm::half_pi<float>(),
@@ -98,6 +99,18 @@ edaf80::Assignment4::run()
 		  { ShaderType::fragment, "EDAF80/player.frag" } },
 		player_shader);
 
+	GLuint bullet_shader = 0u;
+	program_manager.CreateAndRegisterProgram("Bullet",
+		{ { ShaderType::vertex, "EDAF80/bullet.vert" },
+		  { ShaderType::fragment, "EDAF80/bullet.frag" } },
+		bullet_shader);
+
+	if (bullet_shader == 0u) {
+		LogError("Failed to load bullet shader");
+		return;
+	}
+
+
 	auto light_position = glm::vec3(-2.0f, 4.0f, 2.0f);
 
 	float elapsed_time_s = 0.0f;
@@ -118,7 +131,8 @@ edaf80::Assignment4::run()
 	}
 
 	//TODO: We want to create our geometry. Probably a good approach is simulating the components as spheres.
-	auto const player_geo = parametric_shapes::createSphere(5.0f, 50u, 50u);
+	float player_width = 5.0f;
+	auto const player_geo = parametric_shapes::createSphere(player_width, 50u, 50u);
 	if (player_geo.vao == 0u) {
 		LogError("Failed to retrieve the mesh for the player");
 		return;
@@ -174,7 +188,23 @@ edaf80::Assignment4::run()
 
 	changeCullMode(cull_mode);
 
-	std::vector<Box> active_boxes;
+	//Boxes variables
+	std::vector<std::unique_ptr<Box>> active_boxes;
+	glm::vec3 player_position(0.0f, 0.0f, 0.0f);
+	float box_sphere_radius = 2.0f * player_width;
+	int max_boxes_in_width = 4;
+
+	//Field variables
+	float left_bound = -max_boxes_in_width * box_sphere_radius + player_width / 2.0f;
+	float right_bound = max_boxes_in_width * box_sphere_radius - player_width / 2.0f;
+
+	//Bullet variables
+	std::vector<std::unique_ptr<Bullet>> active_bullets;
+	float bullet_sphere_radius = 1.0f;
+	float last_bullet_time = 0.0f;
+	float fire_rate = 1.0f / 3.0f;  // Fire 3 bullets every 1 second
+
+
 
 	//TODO: Comment out
 	//active_boxes.push_back(Box(elapsed_time_s, mCamera, &box_shader, set_uniforms));
@@ -195,7 +225,11 @@ edaf80::Assignment4::run()
 
 		glfwPollEvents();
 		inputHandler.Advance();
-		mCamera.Update(deltaTimeUs, inputHandler);
+
+
+		//mCamera.Update(deltaTimeUs, inputHandler);
+
+
 		if (use_orbit_camera) {
 			mCamera.mWorld.LookAt(glm::vec3(0.0f));
 		}
@@ -233,6 +267,26 @@ edaf80::Assignment4::run()
 		//
 
 
+		if (inputHandler.GetKeycodeState(GLFW_KEY_A) & GLFW_PRESS) {
+			player_position.x += box_sphere_radius * 8.0f * deltaTimeUs.count() / 1000000.0f;  // Move left 
+		}
+		if (inputHandler.GetKeycodeState(GLFW_KEY_D) & GLFW_PRESS) {
+			player_position.x -= box_sphere_radius * 8.0f * deltaTimeUs.count() / 1000000.0f;  // Move right
+		}
+
+		/*if (inputHandler.GetKeycodeState(GLFW_KEY_SPACE) & JUST_PRESSED) {
+			glm::vec3 bullet_position = player_position;
+			glm::vec3 bullet_direction = glm::vec3(0.0f, 0.0f, 1.0f);  // Modify this as necessary
+			active_bullets.emplace_back(std::make_unique<Bullet>(elapsed_time_s, mCamera, bullet_shader, set_uniforms, bullet_position, bullet_direction));
+		}*/
+
+
+		// Constrain player to the screen (optional)
+		player_position.x = glm::clamp(player_position.x, left_bound, right_bound);  // Example: restrict player's X movement between -30 and 30
+
+		// Update the player node's position based on input
+		player.get_transform().SetTranslate(player_position);
+
 		mWindowManager.NewImGuiFrame();
 
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
@@ -243,24 +297,69 @@ edaf80::Assignment4::run()
 			//
 			// Todo: Render all your geometry here.
 			//
+			if (elapsed_time_s - last_bullet_time >= fire_rate) {
+				glm::vec3 bullet_position = player_position;
+				glm::vec3 bullet_direction = glm::vec3(0.0f, 0.0f, 1.0f);
+				active_bullets.emplace_back(std::make_unique<Bullet>(elapsed_time_s, mCamera, bullet_shader, set_uniforms, bullet_position, bullet_direction));
+
+				last_bullet_time = elapsed_time_s;  // Reset the timer after shooting a bullet
+			}
+
 			
 
 			//TODO: Here, code logic for shape behaviour in each frame
-			if (active_boxes.size() < 5 && rand() % 2 == 0) {
-				active_boxes.push_back(Box(elapsed_time_s, mCamera, box_shader, set_uniforms));  // Create a new box
+			if (active_boxes.size() < 10 && (rand() / static_cast<float>(RAND_MAX)) < 0.02) {
+				active_boxes.emplace_back(std::make_unique<Box>(elapsed_time_s, mCamera, box_shader, set_uniforms, max_boxes_in_width, box_sphere_radius));
 			}
 
-			// For each box in our list, update and render it.
-			for (auto& box : active_boxes) {
-				box.update(elapsed_time_s, 5.0f);  // Example speed value
-				box.render(mCamera.GetWorldToClipMatrix());
+
+
+			// Update and render boxes
+			for (auto& box_ptr : active_boxes) {
+				box_ptr->update(elapsed_time_s, 1.0f);  // Example speed value
+				box_ptr->render(mCamera.GetWorldToClipMatrix());
 			}
 
-			// Remove boxes that have been destroyed or passed the player
+			// Remove destroyed boxes
 			active_boxes.erase(std::remove_if(active_boxes.begin(), active_boxes.end(),
-				[](Box const& box) {
-					return box.isDestroyed() || box.hasPassedPlayer();
+				[](const std::unique_ptr<Box>& box_ptr) {
+					return box_ptr->isDestroyed() || box_ptr->hasPassedPlayer();
 				}), active_boxes.end());
+
+
+
+			float bullet_speed = 100.0f;  // Adjust as needed
+
+			// Update and render bullets
+			for (auto& bullet_ptr : active_bullets) {
+				bullet_ptr->update(elapsed_time_s, bullet_speed);
+				bullet_ptr->render(mCamera.GetWorldToClipMatrix());
+			}
+
+
+			// Collision detection between bullets and boxes
+			for (auto& bullet_ptr : active_bullets) {
+				for (auto& box_ptr : active_boxes) {
+					float distance = glm::distance(bullet_ptr->getPosition(), box_ptr->getPosition());
+					float collision_distance = bullet_sphere_radius + box_sphere_radius;
+					if (distance <= collision_distance) {
+						bullet_ptr->destroy();  // Mark bullet as destroyed
+						box_ptr->takeHit();  // Decrease hit points for the box
+						// Add explosion effects or score increment here if necessary
+					}
+				}
+			}
+
+
+
+			// Remove destroyed bullets
+			active_bullets.erase(std::remove_if(active_bullets.begin(), active_bullets.end(),
+				[](const std::unique_ptr<Bullet>& bullet_ptr) {
+					return bullet_ptr->isDestroyed();
+				}), active_bullets.end());
+
+
+
 			player.render(mCamera.GetWorldToClipMatrix());
 		}
 

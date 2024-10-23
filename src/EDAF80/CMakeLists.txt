@@ -65,6 +65,8 @@ target_sources (
 		[[assignment4.cpp]]
 		[[box.hpp]]
 		[[box.cpp]]
+		[[bullet.hpp]]
+		[[bullet.cpp]]
 )
 target_link_libraries (
 	EDAF80_Assignment4

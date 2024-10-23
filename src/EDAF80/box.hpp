@@ -1,12 +1,12 @@
 #pragma once
 
-#include "../core/node.hpp"
+#include "core/node.hpp"
 #include <glm/glm.hpp>
 
 class Box {
 public:
 	// Constructor initializes the box, sets up geometry, and shaders
-	Box(float elapsed_time, FPSCameraf& mCamera, GLuint& box_shader, std::function<void(GLuint)> const& set_uniforms);
+	Box(float elapsed_time, FPSCameraf& mCamera, GLuint& box_shader, std::function<void(GLuint)> const& set_uniforms, int max_boxes_in_width, float radius);
 
 	// Update box's position over time and check if it's destroyed or passed the player
 	void update(float elapsed_time, float object_speed);
@@ -26,8 +26,10 @@ public:
 	// Destroy the box
 	void destroy();
 
+	void takeHit();
+
 private:
-	void setup_geometry();
+	void setup_geometry(float box_width);
 	void setup_shaders();
 
 	Node _node;  // Node to represent the box geometry
@@ -39,4 +41,5 @@ private:
 	FPSCameraf _mCamera; //The camera
 	GLuint _box_shader;
 	std::function<void(GLuint)> _set_uniforms;
+	int _hit_points;  // Number of hits the box can take
 };
