@@ -11,6 +11,9 @@
 
 #include <clocale>
 #include <stdexcept>
+#include "parametric_shapes.hpp"
+#include <core/node.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 edaf80::Assignment5::Assignment5(WindowManager& windowManager) :
 	mCamera(0.5f * glm::half_pi<float>(),
@@ -40,27 +43,89 @@ edaf80::Assignment5::run()
 	mCamera.mWorld.SetTranslate(glm::vec3(0.0f, 0.0f, 6.0f));
 	mCamera.mMouseSensitivity = glm::vec2(0.003f);
 	mCamera.mMovementSpeed = glm::vec3(3.0f); // 3 m/s => 10.8 km/h
+	auto camera_position = mCamera.mWorld.GetTranslation();
+
+	auto const light_position = glm::vec3(-2.0f, 4.0f, 2.0f);
 
 	// Create the shader programs
 	ShaderProgramManager program_manager;
-	GLuint fallback_shader = 0u;
-	program_manager.CreateAndRegisterProgram("Fallback",
+	GLuint player_shader = 0u;
+
+	//TODO: Change shaders and their paths to more appropriate shaders later
+	program_manager.CreateAndRegisterProgram("Player",
 	                                         { { ShaderType::vertex, "common/fallback.vert" },
 	                                           { ShaderType::fragment, "common/fallback.frag" } },
-	                                         fallback_shader);
-	if (fallback_shader == 0u) {
-		LogError("Failed to load fallback shader");
+	                                         player_shader);
+	if (player_shader == 0u) {
+		LogError("Failed to load player shader");
+		return;
+	}
+
+	GLuint box_shader = 0u;
+	program_manager.CreateAndRegisterProgram("Box",
+		{ { ShaderType::vertex, "common/fallback.vert" },
+		  { ShaderType::fragment, "common/fallback.frag" } },
+		box_shader);
+	if (player_shader == 0u) {
+		LogError("Failed to load box shader");
 		return;
 	}
 
 	//
 	// Todo: Insert the creation of other shader programs.
 	//       (Check how it was done in assignment 3.)
+	//	TODO: We want to create shaders for the asteroids, the box we are in, and the space ship.
 	//
+
+	auto const set_uniforms = [&light_position](GLuint program) {
+		glUniform3fv(glGetUniformLocation(program, "light_position"), 1, glm::value_ptr(light_position));
+		};
+
+	auto const quad_shape = parametric_shapes::createQuad(100.0, 100.0, 1000, 1000);
+	if (quad_shape.vao == 0u) {
+		LogError("Failed to retrieve the mesh for the quad");
+		return;
+	}
+
+	//TODO: We want to create our geometry. Probably a good approach is simulating the components as spheres.
+	auto const player_geo = parametric_shapes::createSphere(10.0f, 50u, 50u);
+	if (player_geo.vao == 0u) {
+		LogError("Failed to retrieve the mesh for the player");
+		return;
+	}
+	
+	auto const box_geo = parametric_shapes::createSphere(5.0f, 50u, 50u);
+	if (box_geo.vao == 0u) {
+		LogError("Failed to retrieve the mesh for the box");
+		return;
+	}
 
 	//
 	// Todo: Load your geometry
 	//
+
+	Node player;
+	player.set_geometry(player_geo);
+	//quad.set_program(&fallback_shader, phong_set_uniforms);
+	player.set_program(&player_shader, set_uniforms);
+	//player.add_texture("nissan_beach", cubemap_texture, GL_TEXTURE_CUBE_MAP);
+	//player.add_texture("water_normal_map", water_normal_map, GL_TEXTURE_2D);
+
+	//TODO: If we use the same uniforms in both programs, we dont actually need to set uniforms twice, but the given
+	//code expects us to set uniforms when setting a program. Maybe it is not necessary, investigate?
+
+	Node box;
+	box.set_geometry(box_geo);
+	box.set_program(&player_shader, set_uniforms);
+
+	//auto skybox_shape = parametric_shapes::createSphere(20.0f, 100u, 100u);
+
+
+	//TODO
+	/*Node skybox;
+	skybox.set_geometry(skybox_shape);
+	skybox.set_program(&skybox_shader, phong_set_uniforms);
+	skybox.add_texture("nissan_beach", cubemap_texture, GL_TEXTURE_CUBE_MAP);*/
 
 	glClearDepthf(1.0f);
 	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
@@ -130,6 +195,9 @@ edaf80::Assignment5::run()
 			//
 			// Todo: Render all your geometry here.
 			//
+
+			//player.render(mCamera.GetWorldToClipMatrix());
+			//box.render(mCamera.GetWorldToClipMatrix());
 		}
 
 

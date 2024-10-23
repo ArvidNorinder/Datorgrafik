@@ -15,6 +15,9 @@
 #include <clocale>
 #include <stdexcept>
 
+#include <vector>  // For std::vector'
+#include "box.hpp"
+
 edaf80::Assignment4::Assignment4(WindowManager& windowManager) :
 	mCamera(0.5f * glm::half_pi<float>(),
 	        static_cast<float>(config::resolution_x) / static_cast<float>(config::resolution_y),
@@ -36,6 +39,7 @@ edaf80::Assignment4::~Assignment4()
 	bonobo::deinit();
 }
 
+
 void
 edaf80::Assignment4::run()
 {
@@ -52,10 +56,11 @@ edaf80::Assignment4::run()
 	GLuint water_normal_map = bonobo::loadTexture2D(config::resources_path("textures/waves.png"));
 
 	// Set up the camera
-	mCamera.mWorld.SetTranslate(glm::vec3(-40.0f, 14.0f, 6.0f));
+	mCamera.mWorld.SetTranslate(glm::vec3(0.0f, 30.0f, -100.0f));
 	mCamera.mWorld.LookAt(glm::vec3(0.0f));
 	mCamera.mMouseSensitivity = glm::vec2(0.003f);
 	mCamera.mMovementSpeed = glm::vec3(3.0f); // 3 m/s => 10.8 km/h
+
 	auto camera_position = mCamera.mWorld.GetTranslation();
 
 	// Create the shader programs
@@ -81,36 +86,30 @@ edaf80::Assignment4::run()
 		return;
 	}
 
-	GLuint water_shader = 0u;
-	program_manager.CreateAndRegisterProgram("Water",
-		{ { ShaderType::vertex, "EDAF80/water.vert" },
-		  { ShaderType::fragment, "EDAF80/water.frag" } },
-		water_shader);
+	GLuint box_shader = 0u;
+	program_manager.CreateAndRegisterProgram("Box",
+		{ { ShaderType::vertex, "EDAF80/box.vert" },
+		  { ShaderType::fragment, "EDAF80/box.frag" } },
+		box_shader);
 
-	if (water_shader == 0u) {
-		LogError("Failed to load water shader");
-		return;
-	}
+	GLuint player_shader = 0u;
+	program_manager.CreateAndRegisterProgram("Player",
+		{ { ShaderType::vertex, "EDAF80/player.vert" },
+		  { ShaderType::fragment, "EDAF80/player.frag" } },
+		player_shader);
 
 	auto light_position = glm::vec3(-2.0f, 4.0f, 2.0f);
 
 	float elapsed_time_s = 0.0f;
-	auto colordeep = glm::vec4(0.0f, 0.0f, 0.1f, 1.0f);
-	auto colorshallow = glm::vec4(0.0f, 0.5f, 0.5f, 1.0f);
 	bool use_normal_mapping = false;
-	auto const phong_set_uniforms = [&use_normal_mapping, &light_position, &camera_position, &elapsed_time_s, &colordeep, &colorshallow](GLuint program) {
+	auto const set_uniforms = [&use_normal_mapping, &light_position, &camera_position, &elapsed_time_s](GLuint program) {
 		glUniform1i(glGetUniformLocation(program, "use_normal_mapping"), use_normal_mapping ? 1 : 0);
 		glUniform3fv(glGetUniformLocation(program, "light_position"), 1, glm::value_ptr(light_position));
 		glUniform3fv(glGetUniformLocation(program, "camera_position"), 1, glm::value_ptr(camera_position));
 
 		glUniform1f(glGetUniformLocation(program, "time"), elapsed_time_s);
-		glUniform4fv(glGetUniformLocation(program, "colordeep"), 1, glm::value_ptr(colordeep));
-		glUniform4fv(glGetUniformLocation(program, "colorshallow"), 1, glm::value_ptr(colorshallow));
 		};
 
-		
-
-	
 
 	auto const quad_shape = parametric_shapes::createQuad(100.0, 100.0, 1000, 1000);
 	if (quad_shape.vao == 0u) {
@@ -118,24 +117,40 @@ edaf80::Assignment4::run()
 		return;
 	}
 
-	
+	//TODO: We want to create our geometry. Probably a good approach is simulating the components as spheres.
+	auto const player_geo = parametric_shapes::createSphere(5.0f, 50u, 50u);
+	if (player_geo.vao == 0u) {
+		LogError("Failed to retrieve the mesh for the player");
+		return;
+	}
+
+	auto skybox_shape = parametric_shapes::createSphere(20.0f, 100u, 100u);
+
 	//
 	// Todo: Load your geometry
 	//
 
-	Node quad;
+	Node player;
+	player.set_geometry(player_geo);
+	player.set_program(&player_shader, set_uniforms);
+
+	//TODO: If we use the same uniforms in both programs, we dont actually need to set uniforms twice, but the given
+	//code expects us to set uniforms when setting a program. Maybe it is not necessary, investigate?
+
+	Node skybox;
+	skybox.set_geometry(skybox_shape);
+	skybox.set_program(&skybox_shader, set_uniforms);
+	skybox.add_texture("nissan_beach", cubemap_texture, GL_TEXTURE_CUBE_MAP);
+	
+
+	/*Node quad;
 	quad.set_geometry(quad_shape);
 	//quad.set_program(&fallback_shader, phong_set_uniforms);
 	quad.set_program(&water_shader, phong_set_uniforms);
 	quad.add_texture("nissan_beach", cubemap_texture, GL_TEXTURE_CUBE_MAP);
-	quad.add_texture("water_normal_map", water_normal_map, GL_TEXTURE_2D);
+	quad.add_texture("water_normal_map", water_normal_map, GL_TEXTURE_2D);*/
 
-	auto skybox_shape = parametric_shapes::createSphere(20.0f, 100u, 100u);
-
-	Node skybox;
-	skybox.set_geometry(skybox_shape);
-	skybox.set_program(&skybox_shader, phong_set_uniforms);
-	skybox.add_texture("nissan_beach", cubemap_texture, GL_TEXTURE_CUBE_MAP);
+	
 
 
 
@@ -158,6 +173,13 @@ edaf80::Assignment4::run()
 	float basis_length_scale = 1.0f;
 
 	changeCullMode(cull_mode);
+
+	std::vector<Box> active_boxes;
+
+	//TODO: Comment out
+	//active_boxes.push_back(Box(elapsed_time_s, mCamera, &box_shader, set_uniforms));
+
+	//Box test = Box(elapsed_time_s, mCamera, box_shader, set_uniforms);
 
 	while (!glfwWindowShouldClose(window)) {
 		auto const nowTime = std::chrono::high_resolution_clock::now();
@@ -221,25 +243,26 @@ edaf80::Assignment4::run()
 			//
 			// Todo: Render all your geometry here.
 			//
-			glUseProgram(skybox_shader);
-
-
-			glm::mat4 view = mCamera.GetWorldToViewMatrix();
-			GLint view_loc = glGetUniformLocation(skybox_shader, "view");
-			glUniformMatrix4fv(view_loc, 1, GL_FALSE, glm::value_ptr(view));
-
-			glm::mat4 projection = mCamera.GetViewToClipMatrix();
-			GLint projection_loc = glGetUniformLocation(skybox_shader, "projection");
-			glUniformMatrix4fv(projection_loc, 1, GL_FALSE, glm::value_ptr(projection));
-
-			//Ensure skybox is behind everthing else
-			glDepthMask(GL_FALSE);
-			skybox.render(mCamera.GetWorldToClipMatrix());
-			glDepthMask(GL_TRUE);
 			
-			quad.render(mCamera.GetWorldToClipMatrix());
-		}
 
+			//TODO: Here, code logic for shape behaviour in each frame
+			if (active_boxes.size() < 5 && rand() % 2 == 0) {
+				active_boxes.push_back(Box(elapsed_time_s, mCamera, box_shader, set_uniforms));  // Create a new box
+			}
+
+			// For each box in our list, update and render it.
+			for (auto& box : active_boxes) {
+				box.update(elapsed_time_s, 5.0f);  // Example speed value
+				box.render(mCamera.GetWorldToClipMatrix());
+			}
+
+			// Remove boxes that have been destroyed or passed the player
+			active_boxes.erase(std::remove_if(active_boxes.begin(), active_boxes.end(),
+				[](Box const& box) {
+					return box.isDestroyed() || box.hasPassedPlayer();
+				}), active_boxes.end());
+			player.render(mCamera.GetWorldToClipMatrix());
+		}
 
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 

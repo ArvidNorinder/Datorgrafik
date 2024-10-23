@@ -29,7 +29,7 @@ target_sources (
 		[[ShaderProgramManager.cpp]]
 		[[various.cpp]]
 		[[WindowManager.cpp]]
-)
+ )
 
 target_include_directories (
 	bonobo
