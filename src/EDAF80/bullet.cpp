@@ -19,7 +19,7 @@ Bullet::Bullet(float elapsed_time,
 	_direction(glm::normalize(direction))
 {
 	// Set up geometry
-	float bullet_radius = 2.0f;  // Adjust as needed
+	float bullet_radius = 1.5f;  // Adjust as needed
 	setup_geometry(bullet_radius);
 
 	// Set up shaders

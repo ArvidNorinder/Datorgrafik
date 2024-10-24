@@ -10,7 +10,7 @@ class Window;
 
 namespace edaf80
 {
-	//! \brief Wrapper class for Assignment 5
+	//! \brief Wrapper class for Assignment 4
 	class Assignment5 {
 	public:
 		//! \brief Default constructor.
@@ -33,6 +33,6 @@ namespace edaf80
 		FPSCameraf     mCamera;
 		InputHandler   inputHandler;
 		WindowManager& mWindowManager;
-		GLFWwindow*    window;
+		GLFWwindow* window;
 	};
 }

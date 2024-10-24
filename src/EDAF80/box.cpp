@@ -120,7 +120,7 @@ void Box::takeHit()
 	_hit_points--;  // Decrease hit points
 
 	// Check if HP is less than or equal to half of the max HP and switch to damaged texture
-	if (_hit_points <= (_max_hit_points / 2) && _damaged_texture != 0) {
+	if (_hit_points <= (_max_hit_points / 2.0f) && _damaged_texture != 0) {
 		_node.add_texture("diffuse_texture", _damaged_texture, GL_TEXTURE_2D);  // Switch to damaged texture
 	}
 
